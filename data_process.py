@@ -20,7 +20,7 @@ def geo_distance(lat1, lon1, lat2, lon2):
 
 package_data_file = "./almrrc2021/almrrc2021-data-training/model_build_inputs/package_data.json"
 route_data_file = "./almrrc2021/almrrc2021-data-training/model_build_inputs/route_data.json"
-save_folder = "./instance"
+save_folder = "./instances"
 selected_depot_ids = ['DCH1', 'DCH2', 'DCH3']
 depot_coordinates = {'DCH1':(41.84032828797428, -87.68433006138673), # (lat, long)
                      'DCH2':(42.031472230740874, -87.77709166137727),
