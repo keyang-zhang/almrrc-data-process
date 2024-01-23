@@ -1,11 +1,16 @@
 # focus on three depots in Chicago metropolitan area: DCH1 (Chicago), DCH2 (Morton Grove), DCH3 (Lise)
+# quick data structure (nested dict) reminder
+# travel time:  route_id -> stop_id -> stop_id -> {route_id:{stop_id:{stop_id:travel_time_in_seconds}}
+# package data: route_id -> stop_id -> parcel_id -> parcel_info_dict
+# route data: route_id -> route_info_dict; where route_into_dict["stops"] gives {stop_id: stop_info_dict, ...}
 
 import json
-import matplotlib.pyplot as plt
 import pandas as pd
 import math
 
 EARTH_RADIUS = 6371.0008
+
+
 def geo_distance(lat1, lon1, lat2, lon2):
     # Convert all angles to radians
     lat1_r = math.radians(lat1)
@@ -20,17 +25,19 @@ def geo_distance(lat1, lon1, lat2, lon2):
 
 package_data_file = "./almrrc2021/almrrc2021-data-training/model_build_inputs/package_data.json"
 route_data_file = "./almrrc2021/almrrc2021-data-training/model_build_inputs/route_data.json"
-save_folder = "./instances"
+travel_time_data_file = "./almrrc2021/almrrc2021-data-training/model_build_inputs/travel_times.json"
+save_folder = "./instances/Chicago-all"
 selected_depot_ids = ['DCH1', 'DCH2', 'DCH3']
-depot_coordinates = {'DCH1':(41.84032828797428, -87.68433006138673), # (lat, long)
-                     'DCH2':(42.031472230740874, -87.77709166137727),
-                     'DCH3':(41.803348036444014, -88.09727436138859)}
+depot_coordinates = {'DCH1': (41.84032828797428, -87.68433006138673),  # (lat, long)
+                     'DCH2': (42.031472230740874, -87.77709166137727),
+                     'DCH3': (41.803348036444014, -88.09727436138859)}
 
 with open(package_data_file, "r") as f:
     package_data_all = json.load(f)
 with open(route_data_file, "r") as f:
     route_data_all = json.load(f)
-
+with open(travel_time_data_file, "r") as f:
+    tt_data_all = json.load(f)
 
 vehicle_info = {"vehicle_id": [], "depot_id": [], "capacity": []}
 route_id_to_vehicle_id = {}
@@ -45,22 +52,31 @@ for route_id, route in route_data_all.items():
         route_id_to_vehicle_id[route_id] = vehicle_id
         vehicle_count += 1
 
-customer_info = {"customer_id": [], "dropoff_long":[], "dropoff_lat":[], "volume":[],
-                 "dropoff_tw_start":[], "dropoff_tw_end":[], "service_duration":[],
-                 "depth":[],"height":[],"width":[],
-                 "dropoff_zone_id":[], "delivered_date":[], "depot_id":[], "vehicle_id":[]}
+customer_info = {"customer_id": [], "dropoff_long": [], "dropoff_lat": [], "dropoff_node_id": [],
+                 "volume": [], "dropoff_tw_start": [], "dropoff_tw_end": [], "service_duration": [],
+                 "depth": [], "height": [], "width": [],
+                 "dropoff_zone_id": [], "delivered_date": [], "depot_id": [], "vehicle_id": []}
 customer_count = 0
+node_count = 0
+tt_matrix = {}
 for route_id in package_data_all:
     depot_id = route_data_all[route_id]["station_code"]
     dispatched_date = route_data_all[route_id]["date_YYYY_MM_DD"]
+    route_tt_data = tt_data_all[route_id]
     if depot_id in selected_depot_ids:
+        route_node_stop_map = {}
         for stop_id in package_data_all[route_id]:
             stop_info = route_data_all[route_id]["stops"][stop_id]
+            node_id = f"cust_node_{node_count}"
+            route_node_stop_map[node_id] = stop_id
+            node_count += 1
+            # treat each parcel as a single customer
             for parcel_id in package_data_all[route_id][stop_id]:
                 parcel_info = package_data_all[route_id][stop_id][parcel_id]
                 customer_info["customer_id"].append(f"c{customer_count}")
                 customer_info["dropoff_long"].append(stop_info["lng"])
                 customer_info["dropoff_lat"].append(stop_info["lat"])
+                customer_info["dropoff_node_id"].append(node_id)
                 customer_info["dropoff_zone_id"].append(stop_info["zone_id"])
                 customer_info["delivered_date"].append(dispatched_date)
                 customer_info["dropoff_tw_start"].append(parcel_info["time_window"]["start_time_utc"])
@@ -69,15 +85,28 @@ for route_id in package_data_all:
                 customer_info["depth"].append(parcel_info["dimensions"]["depth_cm"])
                 customer_info["height"].append(parcel_info["dimensions"]["height_cm"])
                 customer_info["width"].append(parcel_info["dimensions"]["width_cm"])
-                d, h, w = parcel_info["dimensions"]["depth_cm"], parcel_info["dimensions"]["height_cm"], parcel_info["dimensions"]["width_cm"]
+                d, h = parcel_info["dimensions"]["depth_cm"], parcel_info["dimensions"]["height_cm"]
+                w = parcel_info["dimensions"]["width_cm"]
                 customer_info["volume"].append(d * h * w)
                 customer_info["depot_id"].append(depot_id)
                 customer_info["vehicle_id"].append(route_id_to_vehicle_id[route_id])
                 customer_count += 1
+        # update travel time matrix
+        for orig_id in route_node_stop_map:
+            for dest_id in route_node_stop_map:
+                orig_stop_id, dest_stop_id = route_node_stop_map[orig_id], route_node_stop_map[dest_id]
+                if tt_matrix.get(orig_id, None) is None:
+                    tt_matrix[orig_id] = {dest_id: route_tt_data[orig_stop_id][dest_stop_id]}
+                else:
+                    tt_matrix[orig_id][dest_id] = route_tt_data[orig_stop_id][dest_stop_id]
 
 # convert the data to tabular format
-pd.DataFrame(customer_info).to_csv(f"{save_folder}/customers.csv")
-pd.DataFrame(vehicle_info).to_csv(f"{save_folder}/vehicles.csv")
+pd.DataFrame(customer_info).to_csv(f"{save_folder}/customers.csv", index=False)
+pd.DataFrame(vehicle_info).to_csv(f"{save_folder}/vehicles.csv", index=False)
+
+# save distance matrix to json
+with open(f"{save_folder}/tt_matrix.json", "w") as f:
+    json.dump(tt_matrix, f, indent=4)
 
 # get statistics
 # - depot distance to the gravity of customers
@@ -106,7 +135,6 @@ area_depth = geo_distance(cust_lat_max, cust_long_max, cust_lat_min, cust_long_m
 area_size = area_depth * area_depth
 
 vehicle_capacity_avg = sum(vehicle_info['capacity']) / vehicle_count
-
 
 with open(f"{save_folder}/statistics.txt", "w") as f:
     res_str = ""
