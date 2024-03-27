@@ -1,5 +1,7 @@
 # huge data files
 /almrrc2021
+/instances/Chicago-all
+/instances/2018-08-08/tt_matrix-complete.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
