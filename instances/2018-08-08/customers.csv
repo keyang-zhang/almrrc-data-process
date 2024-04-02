@@ -1,4 +1,4 @@
-customer_id,dropoff_long,dropoff_lat,dropoff_node_id,volume,dropoff_tw_start,dropoff_tw_end,service_duration,depth,height,width,dropoff_zone_id,delivered_date,depot_id,vehicle_id,stop_id
+customer_id,dropoff_long,dropoff_lat,dropoff_node_id,demand,dropoff_tw_start,dropoff_tw_end,service_duration,depth,height,width,dropoff_zone_id,delivered_date,depot_id,vehicle_id,stop_id
 c276,-88.240729,41.642536,cust_node_190,10440.234,,,43.0,34.3,11.4,26.7,A-2.3B,2018-08-08,DCH3,v1,AA
 c277,-88.226728,41.633664,cust_node_191,987.8399999999998,,,35.0,22.4,3.0,14.7,A-2.1A,2018-08-08,DCH3,v1,AK
 c278,-88.253672,41.648809,cust_node_192,734.7599999999999,,,46.0,23.4,2.0,15.7,A-2.1E,2018-08-08,DCH3,v1,AO

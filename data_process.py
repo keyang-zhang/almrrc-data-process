@@ -54,7 +54,7 @@ for route_id, route in route_data_all.items():
         vehicle_count += 1
 
 customer_info = {"customer_id": [], "dropoff_long": [], "dropoff_lat": [], "dropoff_node_id": [],
-                 "volume": [], "dropoff_tw_start": [], "dropoff_tw_end": [], "service_duration": [],
+                 "demand": [], "dropoff_tw_start": [], "dropoff_tw_end": [], "service_duration": [],
                  "depth": [], "height": [], "width": [],
                  "dropoff_zone_id": [], "delivered_date": [], "depot_id": [], "vehicle_id": [], "stop_id": []}
 customer_count = 0
@@ -88,7 +88,7 @@ for route_id in package_data_all:
                 customer_info["width"].append(parcel_info["dimensions"]["width_cm"])
                 d, h = parcel_info["dimensions"]["depth_cm"], parcel_info["dimensions"]["height_cm"]
                 w = parcel_info["dimensions"]["width_cm"]
-                customer_info["volume"].append(d * h * w)
+                customer_info["demand"].append(d * h * w)
                 customer_info["depot_id"].append(depot_id)
                 customer_info["vehicle_id"].append(route_id_to_vehicle_id[route_id])
                 customer_info["stop_id"].append(stop_id)
@@ -134,7 +134,7 @@ for depot_id in selected_depot_ids:
     depot_avg_dist_to_cust[depot_id] = average_dist
 
 # average size of parcels
-cust_average_volume = sum(customer_info["volume"]) / customer_count
+cust_average_volume = sum(customer_info["demand"]) / customer_count
 
 # size of study area
 cust_lat_max, cust_lat_min = max(customer_info["dropoff_lat"]), min(customer_info["dropoff_lat"])
